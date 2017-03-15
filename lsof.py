@@ -63,30 +63,34 @@ def fmt_dev(stat):
     """Returns a device name from the st_dev field in stat"""
     return str(os.major(stat.st_rdev)) + ',' + str(os.minor(stat.st_rdev))
 
+def read_fd(pid, fd):
+    """Reads information about the file descriptor open in the given process"""
+    fd_path = '/proc/{}/fd/{}'.format(pid, fd)
+    try:
+        real_path = os.readlink(fd_path)
+        if real_path[0] == '/':  # assume that all paths are absolute
+            stat = os.stat(real_path)
+            return FileInfo(pid, fd, get_type(stat), fmt_dev(stat),
+                stat.st_size, stat.st_ino, real_path)
+        else:
+            type, name = real_path.split(':')
+            if type == 'anon_inode':
+                return FileInfo(pid, fd, 'a_inode', '', '0', '', name)
+            if type == 'socket':
+                return FileInfo(pid, fd, 'socket', name[1:-1], '0', '', '')
+            if type == 'pipe':
+                return FileInfo(pid, fd, 'FIFO', '', '', '', 'pipe')
+    except OSError as e:
+        return FileInfo(pid, 'NOFD', 'unknown', '', '', '',
+            '{} (error: {})'.format(fd_path, e.strerror))
+
 def get_proc_fds(pid):
     """Returns all open files found in the process's `fd` directory"""
     fd_dir_path = '/proc/{}/fd'.format(pid)
     ret = []
     try:
         for fd in os.listdir(fd_dir_path):
-            fd_path = '/proc/{}/fd/{}'.format(pid, fd)
-            try:
-                real_path = os.readlink(fd_path)
-                if real_path[0] == '/':  # assume that all paths are absolute
-                    stat = os.stat(real_path)
-                    ret.append(FileInfo(pid, fd, get_type(stat), fmt_dev(stat),
-                        stat.st_size, stat.st_ino, real_path))
-                else:
-                    type, name = real_path.split(':')
-                    if type == 'anon_inode':
-                        ret.append(FileInfo(pid, fd, 'a_inode', '', '0', '', name))
-                    elif type == 'socket':
-                        ret.append(FileInfo(pid, fd, 'socket', name[1:-1], '0', '', ''))
-                    elif type == 'pipe':
-                        ret.append(FileInfo(pid, fd, 'FIFO', '', '', '', 'pipe'))
-            except OSError as e:
-                ret.append(FileInfo(pid, 'NOFD', 'unknown', '', '', '',
-                    '{} (error: {})'.format(fd_path, e.strerror)))
+            ret.append(read_fd(pid, fd))
     except OSError as e:
         # just return one entry describing the error
         return [FileInfo(pid, 'NOFD', 'unknown', '', '', '',
