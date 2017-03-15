@@ -79,11 +79,11 @@ def get_proc_fds(pid):
                 else:
                     type, name = real_path.split(':')
                     if type == 'anon_inode':
-                        ret.append(FileInfo(pid, fd + 'u', 'a_inode', '', '0', '', name))
+                        ret.append(FileInfo(pid, fd, 'a_inode', '', '0', '', name))
                     elif type == 'socket':
-                        ret.append(FileInfo(pid, fd + 'u', 'socket', name[1:-1], '0', '', ''))
+                        ret.append(FileInfo(pid, fd, 'socket', name[1:-1], '0', '', ''))
                     elif type == 'pipe':
-                        ret.append(FileInfo(pid, fd + ' ', 'FIFO', '', '', '', 'pipe'))
+                        ret.append(FileInfo(pid, fd, 'FIFO', '', '', '', 'pipe'))
             except OSError as e:
                 ret.append(FileInfo(pid, 'NOFD', 'unknown', '', '', '',
                     '{} (error: {})'.format(fd_path, e.strerror)))
