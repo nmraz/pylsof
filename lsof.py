@@ -128,10 +128,14 @@ def get_proc_maps(pid):
                     # pseudo-paths (parts of the elf binary + stack, heap, etc.)
                     continue
                 # NOTE: this hard-coded type is probably wrong
-                ret.append(FileInfo(pid, 'mem', 'REG',
-                    ','.join(map(lambda x: str(int(x)), dev.split(':'))),
+                ret.append(FileInfo(pid, 'mem', 'REG', ','.join(dev.split(':')),
                     offset, inode, name))
     except OSError:
         # this appears to be consistent with lsof
         return []
     return ret
+
+def get_proc_files(pid):
+    """Returns a list of *all* open files in the process"""
+    return ([get_proc_cwd(pid)] + [get_proc_root(pid)] + [get_proc_txt(pid)]
+        + get_proc_maps(pid) + get_proc_fds(pid))
