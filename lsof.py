@@ -114,6 +114,10 @@ def get_proc_txt(pid):
 
 def get_proc_maps(pid):
     """Returns info about the memory-mapped files in this process"""
+    def htod(hex):
+        """Converts a hex string to a decimal string"""
+        return str(int(hex, 16))
+
     ret = []
     try:
         with open('/proc/{}/maps'.format(pid)) as maps:
@@ -128,8 +132,8 @@ def get_proc_maps(pid):
                     # pseudo-paths (parts of the elf binary + stack, heap, etc.)
                     continue
                 # NOTE: this hard-coded type is probably wrong
-                ret.append(FileInfo(pid, 'mem', 'REG', ','.join(dev.split(':')),
-                    offset, inode, name))
+                ret.append(FileInfo(pid, 'mem', 'REG',
+                ','.join(map(htod, dev.split(':'))), htod(offset), inode, name))
     except:
         # this appears to be consistent with lsof
         return []
