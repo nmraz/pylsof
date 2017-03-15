@@ -1,13 +1,24 @@
 #!/usr/bin/python
 
 import os
+import pwd
 import stat
 
 def get_cmd_user(pid):
     """Retrieves the command and user for a given pid,
     returning (command, user)
     """
-    return (None, None)  # stub
+    with open('/proc/{}/stat'.format(pid)) as stat_file:
+        # command is the second entry in the stat file, enclosed in parentheses
+        cmd = stat_file.readline().split()[1][1:-1]
+    with open('/proc/{}/status'.format(pid)) as status_file:
+        for ln in status_file:
+            if ln.startswith('Uid:'):
+                # grab the number after 'Uid:'
+                uid = int(ln.split()[1])
+                user = pwd.getpwuid(uid).pw_name
+    return (cmd, user)
+
 
 class FileInfo(object):
     """Contains information about a file open in a specific process:
