@@ -111,3 +111,27 @@ def get_proc_root(pid):
 def get_proc_txt(pid):
     """Returns info about the process's executable file"""
     return read_fd(pid, 'txt', '/proc/{}/exe'.format(pid))
+
+def get_proc_maps(pid):
+    """Returns info about the memory-mapped files in this process"""
+    ret = []
+    try:
+        with open('/proc/{}/maps'.format(pid)) as maps:
+            for line in maps:
+                parts = line.split()
+                offset = parts[2]
+                dev = parts[3]
+                inode = parts[4]
+                # some entries are anonymous (??)
+                name = parts[5] if len(parts) > 5 else '[blah]'
+                if name[0] != '/':
+                    # pseudo-paths (parts of the elf binary + stack, heap, etc.)
+                    continue
+                # NOTE: this hard-coded type is probably wrong
+                ret.append(FileInfo(pid, 'mem', 'REG',
+                    ','.join(map(lambda x: str(int(x)), dev.split(':'))),
+                    offset, inode, name))
+    except OSError:
+        # this appears to be consistent with lsof
+        return []
+    return ret
