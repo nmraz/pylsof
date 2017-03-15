@@ -46,9 +46,18 @@ class FileInfo(object):
         self.node = node
         self.name = name
 
-def get_type(stat):
+def get_type(stat_obj):
     """Returns the type of the file based on its stats"""
-    return "[type]"  # stub
+    mode = stat_obj.st_mode
+    if stat.S_ISREG(mode):
+        return 'REG'
+    if stat.S_ISDIR(mode):
+        return 'DIR'
+    if stat.S_ISCHR(mode):
+        return 'CHR'
+    if stat.S_ISFIFO(mode):
+        return 'FIFO'
+    return 'unknown'
 
 def fmt_dev(stat):
     """Returns a device name from the st_dev field in stat"""
