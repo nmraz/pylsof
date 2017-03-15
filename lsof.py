@@ -59,18 +59,21 @@ def get_type(stat_obj):
         return 'FIFO'
     return 'unknown'
 
-def fmt_dev(stat):
-    """Returns a device name from the st_dev field in stat"""
-    return str(os.major(stat.st_rdev)) + ',' + str(os.minor(stat.st_rdev))
+def fmt_dev(stat, use_rdev):
+    """Returns a device name from the st_dev field in stat, or st_rdev if
+    use_rdev is True
+    """
+    if use_rdev:
+        return str(os.major(stat.st_rdev)) + ',' + str(os.minor(stat.st_rdev))
+    return str(os.major(stat.st_dev)) + ',' + str(os.minor(stat.st_dev))
 
-def read_fd(pid, fd):
+def read_fd(pid, fd, path, use_rdev = False):
     """Reads information about the file descriptor open in the given process"""
-    fd_path = '/proc/{}/fd/{}'.format(pid, fd)
     try:
-        real_path = os.readlink(fd_path)
+        real_path = os.readlink(path)
         if real_path[0] == '/':  # assume that all paths are absolute
             stat = os.stat(real_path)
-            return FileInfo(pid, fd, get_type(stat), fmt_dev(stat),
+            return FileInfo(pid, fd, get_type(stat), fmt_dev(stat, use_rdev),
                 stat.st_size, stat.st_ino, real_path)
         else:
             type, name = real_path.split(':')
@@ -82,7 +85,7 @@ def read_fd(pid, fd):
                 return FileInfo(pid, fd, 'FIFO', '', '', '', 'pipe')
     except OSError as e:
         return FileInfo(pid, 'NOFD', 'unknown', '', '', '',
-            '{} (error: {})'.format(fd_path, e.strerror))
+            '{} (error: {})'.format(path, e.strerror))
 
 def get_proc_fds(pid):
     """Returns all open files found in the process's `fd` directory"""
@@ -90,9 +93,21 @@ def get_proc_fds(pid):
     ret = []
     try:
         for fd in os.listdir(fd_dir_path):
-            ret.append(read_fd(pid, fd))
+            ret.append(read_fd(pid, fd, '/proc/{}/fd/{}'.format(pid, fd), True))
     except OSError as e:
         # just return one entry describing the error
         return [FileInfo(pid, 'NOFD', 'unknown', '', '', '',
             '{} (error: {})'.format(fd_dir_path, e.strerror))]
     return ret
+
+def get_proc_cwd(pid):
+    """Returns info about the process's current working directory"""
+    return read_fd(pid, 'cwd', '/proc/{}/cwd'.format(pid))
+
+def get_proc_root(pid):
+    """Returns info about the process's root directory"""
+    return read_fd(pid, 'rtd', '/proc/{}/root'.format(pid))
+
+def get_proc_txt(pid):
+    """Returns info about the process's executable file"""
+    return read_fd(pid, 'txt', '/proc/{}/exe'.format(pid))
