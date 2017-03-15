@@ -130,7 +130,7 @@ def get_proc_maps(pid):
                 # NOTE: this hard-coded type is probably wrong
                 ret.append(FileInfo(pid, 'mem', 'REG', ','.join(dev.split(':')),
                     offset, inode, name))
-    except OSError:
+    except:
         # this appears to be consistent with lsof
         return []
     return ret
@@ -139,3 +139,20 @@ def get_proc_files(pid):
     """Returns a list of *all* open files in the process"""
     return ([get_proc_cwd(pid)] + [get_proc_root(pid)] + [get_proc_txt(pid)]
         + get_proc_maps(pid) + get_proc_fds(pid))
+
+def lsof():
+    """Prints list of open files"""
+    fmt = "{:21} {:>5}   {:>10} {:>4} {:>9} {:>18} {:>9} {:>10} {}"
+    # headings
+    print fmt.format('COMMAND', 'PID', 'USER', 'FD', 'TYPE', 'DEVICE',
+        'SIZE/OFF', 'NODE', 'NAME')
+    for pid in os.listdir('/proc'):
+        if not pid.isdigit():
+            continue  # not a pid
+        for file_info in get_proc_files(pid):
+            print fmt.format(file_info.cmd, file_info.pid, file_info.usr,
+                file_info.fd, file_info.type, file_info.dev, file_info.size,
+                file_info.node, file_info.name)
+
+if __name__ == '__main__':
+    lsof()
