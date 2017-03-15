@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import os
+import stat
 
 def get_cmd_user(pid):
     """Retrieves the command and user for a given pid,
@@ -33,3 +34,31 @@ class FileInfo(object):
         self.size = size
         self.node = node
         self.name = name
+
+def get_type(stat):
+    """Returns the type of the file based on its stats"""
+    return "[type]"  # stub
+
+def get_proc_fds(pid):
+    """Returns all open files found in the process's `fd` directory"""
+    fd_dir_path = '/proc/{}/fd'.format(pid)
+    ret = []
+    try:
+        for fd in os.listdir(fd_dir_path):
+            fd_path = '/proc/{}/fd/{}'.format(pid, fd)
+            try:
+                real_path = os.readlink(fd_path)
+                if real_path[0] == '/':  # assume that all paths are absolute
+                    stat = os.stat(real_path)
+                    ret.append(FileInfo(pid, fd, get_type(stat), stat.st_dev,
+                        stat.st_size, stat.st_ino, real_path))
+                else:
+                    pass  # TODO: implement this
+            except OSError as e:
+                ret.append(FileInfo(pid, 'NOFD', 'unknown', '', '', '',
+                    '{} (error: {})'.format(fd_path, e.strerror)))
+    except OSError as e:
+        # just return one entry describing the error
+        return [FileInfo(pid, 'NOFD', 'unknown', '', '', '',
+            '{} (error: {})'.format(fd_dir_path, e.strerror))]
+    return ret
