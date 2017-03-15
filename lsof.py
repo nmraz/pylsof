@@ -50,6 +50,10 @@ def get_type(stat):
     """Returns the type of the file based on its stats"""
     return "[type]"  # stub
 
+def fmt_dev(stat):
+    """Returns a device name from the st_dev field in stat"""
+    return str(os.major(stat.st_rdev)) + ',' + str(os.minor(stat.st_rdev))
+
 def get_proc_fds(pid):
     """Returns all open files found in the process's `fd` directory"""
     fd_dir_path = '/proc/{}/fd'.format(pid)
@@ -61,7 +65,7 @@ def get_proc_fds(pid):
                 real_path = os.readlink(fd_path)
                 if real_path[0] == '/':  # assume that all paths are absolute
                     stat = os.stat(real_path)
-                    ret.append(FileInfo(pid, fd, get_type(stat), stat.st_dev,
+                    ret.append(FileInfo(pid, fd, get_type(stat), fmt_dev(stat),
                         stat.st_size, stat.st_ino, real_path))
                 else:
                     pass  # TODO: implement this
